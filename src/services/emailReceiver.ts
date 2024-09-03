@@ -1,45 +1,78 @@
-import { ImapFlow } from 'imapflow'; 
+import Imap from 'imap';
 import { EventEmitter } from 'events';
 import { inspect } from 'util';
 
 export class MailReceiver extends EventEmitter {
-  private imap: any;
+  private imap: Imap;
 
   constructor() {
     super();
-    this.imap = new ImapFlow({
+    this.imap = new Imap({
+      user: process.env.IMAP_USER || "",
+      password: process.env.IMAP_PASSWORD || "",
       host: process.env.IMAP_HOST,
-      port: process.env.IMAP_PORT,
-      secure: true,
-      auth: {
-        user: process.env.IMAP_USER,
-        pass: process.env.IMAP_PASSWORD
-      }
+      port: parseInt(process.env.IMAP_PORT || '993', 10),
+      tls: true,
+      tlsOptions: { rejectUnauthorized: false } // Ignore self-signed certificate
     });
   }
 
-  async connect() {
-    await this.imap.connect();
+  connect() {
+    this.imap.connect();
   }
 
-  async openInbox() {
-    const lock = await this.imap.getMailboxLock('INBOX');
-    try {
-      const messages = await this.imap.fetch('*', { envelope: true, source: true });
-
-      for await (const msg of messages) {
-        this.emit('newMail', msg.envelope.subject, msg.source.toString('utf8'));
-      }
-    } finally {
-      lock.release();
-    }
+  openInbox(callback: (err: Error | null, box?: Imap.Box) => void) {
+    this.imap.openBox('INBOX', true, callback);
   }
 
   async startMailListener() {
-    await this.connect();
-    this.imap.on('mail', async () => {
-      await this.openInbox();
+    this.imap.once('ready', () => {
+      this.openInbox((err, box) => {
+        if (err) throw err;
+
+        this.imap.on('mail', () => {
+          const f = this.imap.seq.fetch(`${box!.messages.total}:*`, {
+            bodies: ['HEADER.FIELDS (FROM)','TEXT']
+          });
+
+          f.on('message', (msg, seqno) => {
+            let prefix = `(#${seqno}) `;
+            let body = '';
+            msg.on('body', (stream, info) => {
+              stream.on('data', (chunk) => {
+                body += chunk.toString('utf8');
+              });
+              stream.once('end', () => {
+                if (info.which === 'TEXT') {
+                  console.log(prefix + 'Body [%s] Finished', inspect(info.which));
+                  console.log('bodybodybodybody',body)
+                  this.emit('newMail', 'Subject Placeholder', body);
+                }
+              });
+            });
+          });
+
+          f.once('error', (err) => {
+            console.log('Fetch error: ' + err);
+          });
+
+          f.once('end', () => {
+            console.log('Done fetching all messages!');
+          });
+        });
+      });
     });
+
+    this.imap.once('error', (err:any) => {
+      console.log('IMAP error: ' + err);
+    });
+
+    this.imap.once('end', () => {
+      console.log('Connection ended');
+    });
+
+    this.connect();
+    return true
   }
 }
 
