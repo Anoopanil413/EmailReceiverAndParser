@@ -1,7 +1,10 @@
 // Logger Utility
-const winston = require('winston');
 
-const logger = winston.createLogger({
+import winston from 'winston'
+
+
+
+export const logger = winston.createLogger({
     level: 'info',
     format: winston.format.json(),
     transports: [
@@ -16,4 +19,3 @@ if (process.env.NODE_ENV !== 'production') {
     }));
 }
 
-module.exports = logger;

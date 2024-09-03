@@ -1,6 +1,16 @@
 import { Request, Response } from 'express';
 // import transporter from '../config/email';
 import {processImage} from '../algorithms/imageProcessing';
+import mailEventEmitter from '../events/emailEvents';
+
+mailEventEmitter.on('startAlgorithm', (mailData) => {
+  const { subject, body } = mailData;
+  console.log('Algorithm triggered with mail data:', subject, body);
+
+  // Perform your algorithm logic here
+  // After processing, save the result to the database and notify frontend
+});
+
 
 export async function handleIncomingEmail(req: Request, res: Response) {
   const { image }: { image: any } = req.body;
