@@ -20,8 +20,7 @@ app.get('/',(req:Request,res:Response)=>{
 const MaileReceiverFun = async()=>{
   const mailReceiver = new MailReceiver();
   const mailReceived =  await mailReceiver.startMailListener()
-  await connectDB()
-
+  
   console.log('mailReceived',mailReceived)
   return true
 }
@@ -35,6 +34,7 @@ const PORT = process.env.PORT || 3000;
 
 
 app.listen(PORT, async() => {
+  await connectDB()
   await MaileReceiverFun()
   console.log(`Server is running on port ${PORT}`);
 });

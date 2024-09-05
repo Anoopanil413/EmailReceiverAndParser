@@ -1,29 +1,27 @@
+// mailReceiver.ts
+
 import Imap from 'imap';
 import { EventEmitter } from 'events';
+import { simpleParser, ParsedMail, Attachment } from 'mailparser';
 import { inspect } from 'util';
-import { saveEmail } from '../config/database';
+import mailEventEmitter from '../events/eventEmmiterINstance';
 
-export class MailReceiver extends EventEmitter {
+class MailReceiver  {
   private imap: Imap;
 
   constructor() {
-    super();
     this.imap = new Imap({
       user: process.env.IMAP_USER || "",
       password: process.env.IMAP_PASSWORD || "",
       host: process.env.IMAP_HOST,
       port: parseInt(process.env.IMAP_PORT || '993', 10),
       tls: true,
-      tlsOptions: { rejectUnauthorized: false } // Ignore self-signed certificate
+      tlsOptions: { rejectUnauthorized: false }, // Handle self-signed certificates
     });
   }
 
   connect() {
     this.imap.connect();
-  }
-
-  openInbox(callback: (err: Error | null, box?: Imap.Box) => void) {
-    this.imap.openBox('INBOX', true, callback);
   }
 
   async startMailListener() {
@@ -32,38 +30,34 @@ export class MailReceiver extends EventEmitter {
         if (err) throw err;
 
         this.imap.on('mail', () => {
-          const f = this.imap.seq.fetch(`${box!.messages.total}:*`, {
-            bodies: ['HEADER.FIELDS (FROM)','TEXT']
+          const fetch = this.imap.seq.fetch(`${box?.messages.total}:*`, {
+            bodies: '',
+            struct: true,
           });
 
-          f.on('message', (msg, seqno) => {
+          fetch.on('message', (msg, seqno) => {
             let prefix = `(#${seqno}) `;
-            let body = '';
+            let buffer: Buffer[] = [];
+
             msg.on('body', (stream, info) => {
               stream.on('data', (chunk) => {
-                body += chunk.toString('utf8');
+                buffer.push(chunk);
               });
-              stream.once('end', async() => {
-                if (info.which === 'TEXT') {
-                  console.log(prefix + 'Body [%s] Finished', inspect(info.which));
-                  const emailData = {
-                    subject: 'Subject Placeholder',
-                    body,
-                    receivedAt: new Date(),
-                  };
-                  await saveEmail(emailData); 
-                  this.emit('newMail', emailData);
-                  this.emit('newMail', 'Subject Placeholder', body);
-                }
-              });
+            });
+
+            msg.once('end', async () => {
+              const parsedEmail = await simpleParser(Buffer.concat(buffer));
+              // console.log('parsedEmailparsedEmailparsedEmailparsedEmailparsedEmail',parsedEmail)
+              console.log("parsedEmail")
+              mailEventEmitter.emit('newMail', parsedEmail);
             });
           });
 
-          f.once('error', (err) => {
+          fetch.once('error', (err) => {
             console.log('Fetch error: ' + err);
           });
 
-          f.once('end', () => {
+          fetch.once('end', () => {
             console.log('Done fetching all messages!');
           });
         });
@@ -79,7 +73,11 @@ export class MailReceiver extends EventEmitter {
     });
 
     this.connect();
-    return true
+    return true;
+  }
+
+  openInbox(callback: (err: Error | null, box?: Imap.Box) => void) {
+    this.imap.openBox('INBOX', true, callback);
   }
 }
 

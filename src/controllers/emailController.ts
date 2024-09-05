@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
 // import transporter from '../config/email';
 import {processImage} from '../algorithms/imageProcessing';
-import mailEventEmitter from '../events/emailEvents';
+import mailEventEmitter from '../events/eventEmmiterINstance';
 
-mailEventEmitter.on('startAlgorithm', (mailData) => {
+mailEventEmitter.on('startAlgorithm', (mailData:any) => {
   const { subject, body } = mailData;
   console.log('Algorithm triggered with mail data:', subject, body);
 
