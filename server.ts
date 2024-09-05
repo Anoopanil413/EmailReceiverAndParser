@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import express, { Request, Response } from 'express';
 import emailRoutes from './src/routes/emailRoutes';
 import MailReceiver from './src/services/emailReceiver';
+import { connectDB } from './src/config/database';
 // import websocket from './src/config/websocket';
 
 dotenv.config();
@@ -19,6 +20,7 @@ app.get('/',(req:Request,res:Response)=>{
 const MaileReceiverFun = async()=>{
   const mailReceiver = new MailReceiver();
   const mailReceived =  await mailReceiver.startMailListener()
+  await connectDB()
 
   console.log('mailReceived',mailReceived)
   return true

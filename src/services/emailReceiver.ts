@@ -1,6 +1,7 @@
 import Imap from 'imap';
 import { EventEmitter } from 'events';
 import { inspect } from 'util';
+import { saveEmail } from '../config/database';
 
 export class MailReceiver extends EventEmitter {
   private imap: Imap;
@@ -42,10 +43,16 @@ export class MailReceiver extends EventEmitter {
               stream.on('data', (chunk) => {
                 body += chunk.toString('utf8');
               });
-              stream.once('end', () => {
+              stream.once('end', async() => {
                 if (info.which === 'TEXT') {
                   console.log(prefix + 'Body [%s] Finished', inspect(info.which));
-                  console.log('bodybodybodybody',body)
+                  const emailData = {
+                    subject: 'Subject Placeholder',
+                    body,
+                    receivedAt: new Date(),
+                  };
+                  await saveEmail(emailData); 
+                  this.emit('newMail', emailData);
                   this.emit('newMail', 'Subject Placeholder', body);
                 }
               });

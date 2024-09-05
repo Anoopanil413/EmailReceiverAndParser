@@ -1,4 +1,4 @@
-import { MongoClient, Db,ServerApiVersion  } from 'mongodb';
+import { MongoClient, Db,ServerApiVersion, Collection  } from 'mongodb';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -19,4 +19,16 @@ export const connectDB = async () => {
   db = client.db(process.env.DB_NAME);
   console.log('Connected to MongoDB');
   return db;
+};
+
+
+export const getEmailsCollection = async (): Promise<Collection> => {
+  const db = await connectDB();
+  return db.collection('emails');
+};
+
+export const saveEmail = async (emailData: any): Promise<void> => {
+  const emailsCollection = await getEmailsCollection();
+  await emailsCollection.insertOne(emailData);
+  console.log('Email saved to database:', emailData._id);
 };
