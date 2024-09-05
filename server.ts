@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import express, { Request, Response } from 'express';
 import emailRoutes from './src/routes/emailRoutes';
+import './src/events/emailEvents'
 import MailReceiver from './src/services/emailReceiver';
 import { connectDB } from './src/config/database';
 // import websocket from './src/config/websocket';
