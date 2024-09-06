@@ -2,7 +2,7 @@
 import { ParsedMail } from 'mailparser';
 import fs from 'fs';
 import path from 'path';
-import { extractZipAttachment } from './extractor';
+import { extractRarAttachment, extractZipAttachment } from './extractor';
 
 export const parseEmail = async (parsedEmail: ParsedMail): Promise<void> => {
   console.log('Parsing email with subject:', parsedEmail.subject);
@@ -30,7 +30,10 @@ export const parseEmail = async (parsedEmail: ParsedMail): Promise<void> => {
     if (contentType === 'application/zip' || filename.endsWith('.zip')) {
       console.log(`Extracting zip file: ${filename}`);
       await extractZipAttachment(content, filename);
-    } else {
+    }else if (contentType === 'application/x-rar-compressed' || filename.endsWith('.rar')) {
+      console.log(`Extracting rar file: ${filename}`);
+      await extractRarAttachment(content, filename);
+    }  else {
       console.log(`Attachment ${filename} is not a zip file.`);
     }
   }
