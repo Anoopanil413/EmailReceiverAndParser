@@ -41,13 +41,22 @@ export const extractZipAttachment = async (zipBuffer: Buffer, zipFilename: strin
   }
 };
 
+const getUniqueFolderPath = (filename: string) => {
+  const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+  const folderName = path.basename(filename, '.rar'); // Remove .rar extension
+  const rootDir = path.resolve(__dirname, '../', 'extracted'); // Root directory (one level above src)
+  return path.join(rootDir, currentDate, folderName); // Folder structure: root/extracted/2024-09-06/attachmentName
+};
+
 
 export const extractRarAttachment = async (rarBuffer: Buffer, rarFilename: string): Promise<void> => {
   try {
     console.log('Extracting RAR file:', rarFilename);
 
     // Create extraction directory based on the filename (without .rar extension)
-    const extractDir = path.join(__dirname, 'extracted', path.basename(rarFilename, '.rar'));
+    // const extractDir = path.join(__dirname, 'extracted', path.basename(rarFilename, '.rar'));
+    const extractDir = getUniqueFolderPath(rarFilename);
+
     await fs.promises.mkdir(extractDir, { recursive: true });
 
     // Create an extractor instance with the RAR buffer
