@@ -39,40 +39,33 @@ export const extractZipAttachment = async (zipBuffer: Buffer, zipFilename: strin
 };
 
 
-
 export const extractRarAttachment = async (rarBuffer: Buffer, rarFilename: string): Promise<void> => {
   try {
-    // Directory for extracted files based on the rar file's name
     const extractDir = path.join(__dirname, 'extracted', path.basename(rarFilename, '.rar'));
 
-    // Ensure the directory exists (recursive allows nested directories)
     await fs.promises.mkdir(extractDir, { recursive: true });
 
-    // Extract files from the rar buffer using unrar-js
-    const extractor = Extractor.extract(rarBuffer);
+    // Extract RAR file using unrar-js
+    const extracted = Extractor.extract(rarBuffer);
 
-    // Process each file and directory inside the rar archive
-    for (const file of extractor.files) {
-      const filePath = path.join(extractDir, file.name); // Get the path for the extracted file or directory
-
-      if (file.isDirectory) {
-        // Create directories recursively
+    for (const file of extracted.files) {
+      const filePath = path.join(extractDir, file.fileName);
+      
+      if (file.fileName.endsWith('/')) {
         await fs.promises.mkdir(filePath, { recursive: true });
       } else {
-        // Ensure the parent directory exists
-        await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+        const writable = fs.createWriteStream(filePath);
+        writable.write(Buffer.from(file.extract()[1])); // file.extract() returns the file's content as Uint8Array
 
-        // Read the file's content
-        const data = await file.read();
-
-        // Write the extracted file to the server's file system
-        await fs.promises.writeFile(filePath, data);
+        await new Promise((resolve, reject) => {
+          writable.on('finish', resolve);
+          writable.on('error', reject);
+        });
       }
     }
 
-    console.log(`Rar file extracted to: ${extractDir}`);
+    console.log(`RAR file extracted to: ${extractDir}`);
   } catch (error) {
-    console.error(`Error extracting rar file ${rarFilename}:`, error);
+    console.error(`Error extracting RAR file ${rarFilename}:`, error);
   }
 };
-
