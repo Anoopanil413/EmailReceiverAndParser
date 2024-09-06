@@ -17,6 +17,7 @@
     "imap": "^0.8.19",
     "mailparser": "^3.7.1",
     "mongodb": "^6.8.0",
+    "node-unrar-js": "^2.0.2",
     "nodemailer": "^6.9.14",
     "unrar-js": "^0.2.3",
     "unzipper": "^0.12.3",

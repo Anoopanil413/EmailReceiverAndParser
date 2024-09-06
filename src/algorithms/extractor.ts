@@ -2,8 +2,11 @@
 
 import fs from 'fs';
 import path from 'path';
-import unzipper from 'unzipper';
-import { Extractor } from 'unrar-js';
+import unzipper, { Extract } from 'unzipper';
+// import { Extractor } from 'unrar-js';
+import { createExtractorFromData } from 'node-unrar-js';
+
+
 
 
 export const extractZipAttachment = async (zipBuffer: Buffer, zipFilename: string): Promise<void> => {
@@ -41,27 +44,43 @@ export const extractZipAttachment = async (zipBuffer: Buffer, zipFilename: strin
 
 export const extractRarAttachment = async (rarBuffer: Buffer, rarFilename: string): Promise<void> => {
   try {
-    const extractDir = path.join(__dirname, 'extracted', path.basename(rarFilename, '.rar'));
+    console.log('Extracting RAR file:', rarFilename);
 
+    // Create extraction directory based on the filename (without .rar extension)
+    const extractDir = path.join(__dirname, 'extracted', path.basename(rarFilename, '.rar'));
     await fs.promises.mkdir(extractDir, { recursive: true });
 
-    // Extract RAR file using unrar-js
-    const extracted = Extractor.extract(rarBuffer);
+    // Create an extractor instance with the RAR buffer
+    const extractor = await createExtractorFromData({ data: rarBuffer });
 
+    // Get the list of files inside the RAR archive
+    const list = extractor.getFileList();
+    const fileHeaders = [...list.fileHeaders]; // File headers contain details of all files
+
+    console.log(`Found ${fileHeaders.length} files in the RAR archive`);
+
+    // Extract all the files from the archive
+    const extracted = extractor.extract({ files: fileHeaders.map(header => header.name) });
+
+    // Iterate over the extracted files and write them to disk
     for (const file of extracted.files) {
-      const filePath = path.join(extractDir, file.fileName);
-      
-      if (file.fileName.endsWith('/')) {
+      const filePath = path.join(extractDir, file.fileHeader.name);
+
+      // If it's a directory, create it
+      if (file.fileHeader.flags.directory) {
         await fs.promises.mkdir(filePath, { recursive: true });
       } else {
-        const writable = fs.createWriteStream(filePath);
-        writable.write(Buffer.from(file.extract()[1])); // file.extract() returns the file's content as Uint8Array
-
-        await new Promise((resolve, reject) => {
-          writable.on('finish', resolve);
-          writable.on('error', reject);
-        });
+        if (file.extraction) {
+          const fileContent = Buffer.from(file.extraction);
+          await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+          await fs.promises.writeFile(filePath, fileContent);
+          console.log(`Extracted: ${file.fileHeader.name}`);
+        } else {
+          console.warn(`File extraction for ${file.fileHeader.name} returned undefined.`);
+        }
       }
+
+      console.log(`Extracted: ${file.fileHeader.name}`);
     }
 
     console.log(`RAR file extracted to: ${extractDir}`);
